@@ -18,8 +18,7 @@ import { helloCommand } from "./commands/hello.js"
 			'-v, --version',
 			'display the version number',
 		);
-	
+		
 	program.addCommand(init).addCommand(helloCommand)
 	program.parse()
-
 })();

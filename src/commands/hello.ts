@@ -1,24 +1,26 @@
 // import figlet from 'figlet';
 
-// import path from 'path'; 
+// import path from 'path';
 
-import { Command } from 'commander';
+import { Command } from "commander";
+import fs from "fs";
+import path from "path";
 
 export const helloCommand = new Command()
-  .name('hello')
-  .description('Prints a greeting message')
+  .name("hello")
+  .description("Prints a greeting message")
   .action(() => {
     renderTitle();
   });
- async function loadScaffoldDependencies(): Promise<string[]> {
-    const packageJsonPath = '/coding/scaffold_2024/package.json'; 
-    const packageJson = await import(packageJsonPath);
-    return Object.keys(packageJson.dependencies);
-  }
+async function loadScaffoldDependencies(): Promise<string[]> {
+  const packageJsonPath = path.join(process.cwd(), "package.json");
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+  return Object.keys(packageJson.dependencies);
+}
 
 export const renderTitle = () => {
-	// const text = figlet.textSync('HEllO !', {
-	// 	font: 'Small',
-	// });
-	console.log(loadScaffoldDependencies());
+  // const text = figlet.textSync('HEllO !', {
+  // 	font: 'Small',
+  // });
+  console.log(loadScaffoldDependencies());
 };
