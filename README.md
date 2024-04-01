@@ -1,3 +1,5 @@
+![Frame 1](https://cdn.jsdelivr.net/gh/gaurangrshah/_shots@master/uPic/2024/Frame%201.jpg)
+
 <h1 align="center">♨️ Node CLI Boilerplate</h1>
 
 <div align="center">
