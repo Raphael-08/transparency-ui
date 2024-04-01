@@ -12,7 +12,7 @@
 	],
 	"scripts": {
 		"cli": "node dist/index.js",
-		"build": "tsup src/index.ts --format esm --clean --minify --metafile",
+		"build": "rm -rf dist && tsup src/index.ts --format esm --clean --minify --metafile",
 		"dev": "tsup src/index.ts --format esm --watch --clean --onSuccess \"node dist/index.js\"",
 		"test": "vitest",
 		"prepare": "husky install",
