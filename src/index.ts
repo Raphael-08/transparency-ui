@@ -1,12 +1,10 @@
 #! /usr/bin/env node
 import { Command } from 'commander';
 import { packageJSON } from './utils/packageJson.js';
-import { renderTitle } from './utils/renderTitle.js';
 import { init } from "./commands/init.js"
 import { helloCommand } from "./commands/hello.js"
 
 (async () => {
-	renderTitle();
 
 	const program = new Command();
 

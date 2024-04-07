@@ -1,59 +1,108 @@
-import ora from "ora";
-import { Command } from "commander";
-import { execa } from "execa";
-import { detect } from "@antfu/ni";
+import readline from 'readline';
 import path from "path";
 import fs from "fs";
+import { Command } from "commander";
+import * as semver from 'semver';
+import { renderTitle } from '../utils/renderTitle.js';
 
-export async function getPackageManager(
-  targetDir: string
-): Promise<"yarn" | "pnpm" | "bun" | "npm"> {
-  const packageManager = await detect({ programmatic: true, cwd: targetDir });
 
-  if (packageManager === "yarn@berry") return "yarn";
-  if (packageManager === "pnpm@6") return "pnpm";
-  if (packageManager === "bun") return "bun";
-  console.log(`detected ${packageManager ?? "npm"} package manager`);
-  return packageManager ?? "npm";
-}
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
 
 export const init = new Command()
   .name("init")
-  .description("install dependencies")
-  .option(
-    "-c, --cwd <cwd>",
-    "the working directory. defaults to the current directory.",
-    process.cwd()
-  )
-  .action(async ({ cwd }: { cwd: string }) => {
-    try {
-      await runInit(cwd);
-    } catch (error) {
-      console.error("Initialization failed:", error);
-      process.exit(1);
-    }
+  .description("Prints a greeting message")
+  .action(() => {
+    renderTitle("Initializing:");
+    checkRequiredPackages()
+      .then((result: PackageCheckResult) => {
+        if (result.missingPackages.length > 0 || result.outdatedPackages.length > 0) {
+          console.log("This project does not meet the requirements:");
+          console.log("Prerequisites:")
+          if (result.missingPackages.length > 0) {
+            console.log("->" + result.missingPackages.join("\n"));
+          }
+          if (result.outdatedPackages.length > 0) {
+            result.outdatedPackages.forEach(pkg => {
+              console.log("->" + `${pkg.packageName}: installed ${pkg.installedVersion}, required ${pkg.requiredVersion}`);
+            });
+          }
+          process.exit(1);
+        }
+        else {
+          console.log("This project meets the requirements!")
+          rl.question("Do you want to change the components file? (yes/no): ", async (answer) => {
+            if (answer.toLowerCase() === 'yes') {
+              const componentsJsonPath = path.join(process.cwd(), "components.json");
+              const componentsJson = JSON.parse(fs.readFileSync(componentsJsonPath, "utf-8"));
+              componentsJson.aliases.transprency = "@/components/ui/transparency";
+
+              rl.question("Write configuration to components.json. Proceed? (yes/no): ", async (confirmation) => {
+                if (confirmation.toLowerCase() === 'yes') {
+                  fs.writeFileSync(componentsJsonPath, JSON.stringify(componentsJson, null, 2));
+                  console.log("Configuration written to components.json.");
+                } else {
+                  console.log("Operation aborted. Configuration not saved.");
+                }
+                rl.close();
+              });
+            } else {
+              console.log("Components file will not be changed.");
+              rl.close();
+            }
+          });
+        }
+      })
+      .catch(error => {
+        console.error('Error checking required packages:', error);
+      });
   });
 
-async function loadScaffoldDependencies(): Promise<string[]> {
-  const packageJsonPath = path.join(process.cwd(), "package.json");
-  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
-  return Object.keys(packageJson.dependencies);
+const normalizeVersion = (version: string) => version.replace(/^\^/, '');
+
+interface PackageCheckResult {
+  missingPackages: string[];
+  outdatedPackages: { packageName: string; installedVersion: string; requiredVersion: string }[];
 }
 
-export async function runInit(cwd: string) {
-  const dependenciesSpinner = ora(`Installing dependencies...`)?.start();
-  const packageManager = await getPackageManager(cwd);
+const requiredPackages = {
+  "next": "^13.6.0"
+};
 
-  const scaffoldDependencies = await loadScaffoldDependencies();
 
-  const deps = [...scaffoldDependencies];
 
-  await execa(
-    packageManager,
-    [packageManager === "npm" ? "install" : "add", ...deps],
-    {
-      cwd,
+async function loadDependencies(): Promise<string[]> {
+  console.log("cheking for required packages...")
+  const packageJsonPath = path.join(process.cwd(), "package.json");
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+  for (const dependency in packageJson.dependencies) {
+    packageJson.dependencies[dependency] = normalizeVersion(packageJson.dependencies[dependency]);
+  }
+  return packageJson.dependencies;
+}
+
+async function checkRequiredPackages(): Promise<PackageCheckResult> {
+  const dependencies = await loadDependencies();
+
+  const missingPackages: string[] = [];
+
+  const outdatedPackages: { packageName: string; installedVersion: string; requiredVersion: string }[] = [];
+
+
+  for (const packageName in requiredPackages) {
+    if (!dependencies || !dependencies[packageName]) {
+      missingPackages.push(packageName);
+    } else {
+      const requiredVersion: string = normalizeVersion(requiredPackages[packageName]);
+      const installedVersion: string = dependencies[packageName];
+      if (!semver.satisfies(installedVersion, requiredVersion) && semver.lt(installedVersion, requiredVersion)) {
+        outdatedPackages.push({ packageName, installedVersion, requiredVersion });
+      }
     }
-  );
-  dependenciesSpinner?.succeed();
+  }
+
+  return { missingPackages, outdatedPackages };
 }

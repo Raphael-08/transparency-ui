@@ -1,7 +1,7 @@
 import figlet from 'figlet';
 
-export const renderTitle = () => {
-	const text = figlet.textSync('Pkg Installer :', {
+export function renderTitle(type: string){
+	const text = figlet.textSync(type, {
 		font: 'Small',
 	});
 	console.log(`\n${text}\n`);
